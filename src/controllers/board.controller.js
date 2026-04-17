@@ -13,7 +13,7 @@ export const createBoard = async (req, res) => {
             userId: req.user.userId,
             role: "OWNER"
           }
-        }
+        } 
       }
     });
 

@@ -7,34 +7,64 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+////////////////////
+/// ENUMS
+////////////////////
+enum Role {
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+////////////////////
+/// MODELS
+////////////////////
 model User {
-  id        String   @id @default(uuid())
-  name      String
-  surname   String
-  email     String   @unique
-  phone     String
-  password  String
-  boards    BoardMember[]
-  tasks     Task[]   @relation("AssignedTasks")
+  id       String @id @default(uuid())
+  name     String
+  surname  String
+  email    String @unique
+  phone    String
+  password String
+
+  boards BoardMember[]
+  tasks  Task[]        @relation("AssignedTasks")
+
+  // ✅ EKLENDİ
+  taskActivities TaskActivity[]
+  comments       Comment[]
+
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Board {
-  id        String   @id @default(uuid())
-  title     String
-  members   BoardMember[]
-  columns   Column[]
+  id    String @id @default(uuid())
+  title String
+
+  members BoardMember[]
+  columns Column[]
+
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model BoardMember {
   id      String @id @default(uuid())
   userId  String
   boardId String
-  role    String
+  role    Role
 
-  user  User  @relation(fields: [userId], references: [id])
-  board Board @relation(fields: [boardId], references: [id])
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  board Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, boardId])
 }
 
 model Column {
@@ -42,20 +72,83 @@ model Column {
   title   String
   order   Int
   boardId String
-  tasks   Task[]
 
-  board Board @relation(fields: [boardId], references: [id])
+  tasks Task[]
+
+  board Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([boardId])
 }
 
 model Task {
-  id          String   @id @default(uuid())
+  id          String    @id @default(uuid())
   title       String
   description String?
-  priority    String?
+  priority    Priority?
   dueDate     DateTime?
-  columnId    String
-  assignedTo  String?
 
-  column Column @relation(fields: [columnId], references: [id])
-  assignee User? @relation("AssignedTasks", fields: [assignedTo], references: [id])
+  order Int
+
+  columnId   String
+  assignedTo String?
+
+  column   Column @relation(fields: [columnId], references: [id], onDelete: Cascade)
+  assignee User?  @relation("AssignedTasks", fields: [assignedTo], references: [id])
+
+  // ✅ EKLENDİ (tam relation)
+  activities TaskActivity[]
+  labels     TaskLabel[]
+  comments   Comment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([columnId])
+  @@index([assignedTo])
+}
+
+model TaskActivity {
+  id        String   @id @default(uuid())
+  taskId    String
+  userId    String
+  action    String
+  createdAt DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([taskId])
+}
+
+model Label {
+  id    String @id @default(uuid())
+  name  String
+  color String
+
+  tasks TaskLabel[]
+}
+
+model TaskLabel {
+  taskId  String
+  labelId String
+
+  task  Task  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  label Label @relation(fields: [labelId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, labelId])
+}
+
+model Comment {
+  id      String @id @default(uuid())
+  content String
+  taskId  String
+  userId  String
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
 }
